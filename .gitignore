@@ -1,0 +1,9 @@
+node_modules/
+
+# pnpm store
+.pnpm-store/
+
+# optional (recommended)
+node_modules/
+
+workspace-state.json

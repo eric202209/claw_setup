@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.4.4",
+    "lastTouchedAt": "2026-04-05T21:00:10.742Z"
+  },
+  "models": {
+    "providers": {
+      "openai": {
+        "baseUrl": "http://ai-gateway:8000/v1",
+        "apiKey": "ollama-local",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "qwen-local",
+            "name": "Qwen3.5-35B-A3B (local)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 65536,
+            "maxTokens": 65536,
+            "api": "openai-completions"
+          }
+        ]
+      },
+      "ollama": {
+        "baseUrl": "http://host.docker.internal:11434",
+        "models": [
+          {
+            "id": "nomic-embed-text:latest",
+            "name": "Nomic Embed",
+            "input": [
+              "text"
+            ],
+            "contextWindow": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "openai/qwen-local",
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      },
+      "workspace": "/root/.openclaw/workspace",
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "5m"
+      },
+      "timeoutSeconds": 600,
+      "memorySearch": {
+        "enabled": true,
+        "provider": "ollama",
+        "model": "nomic-embed-text:latest",
+        "remote": {
+          "baseUrl": "http://172.17.0.1:11434"
+        },
+        "query": {
+          "hybrid": {
+            "enabled": true,
+            "vectorWeight": 0.6,
+            "textWeight": 0.4,
+            "temporalDecay": {
+              "enabled": true,
+              "halfLifeDays": 60
+            }
+          }
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "default": true,
+        "name": "Main",
+        "workspace": "/root/.openclaw/workspace",
+        "agentDir": "/root/.openclaw/agents/main/agent"
+      }
+    ]
+  },
+  "session": {
+    "maintenance": {
+      "rotateBytes": "100mb"
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": false
+    },
+    "discord": {
+      "enabled": false,
+      "groupPolicy": "allowlist"
+    },
+    "slack": {
+      "mode": "socket",
+      "webhookPath": "/slack/events",
+      "enabled": false,
+      "userTokenReadOnly": true,
+      "groupPolicy": "allowlist"
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789",
+        "http://172.17.0.1:18789"
+      ],
+      "allowInsecureAuth": true,
+      "dangerouslyDisableDeviceAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "YOUR_OPENCLAW_GATEWAY_TOKEN"
+    }
+  },
+  "wizard": {
+    "lastRunAt": "2026-04-04T05:07:00.435Z",
+    "lastRunVersion": "2026.4.4",
+    "lastRunCommand": "configure",
+    "lastRunMode": "local"
+  },
+  "plugins": {
+    "entries": {
+      "openai": {
+        "enabled": true
+      }
+    }
+  }
+}
+
+
+

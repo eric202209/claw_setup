@@ -1,0 +1,98 @@
+services:
+  # Computing Layer：LLaMA inference (GPU-optimized, memory-limited)
+  ai-gateway:
+    image: openclaw-test-ai-gateway:latest
+    build:
+      context: ./ai-gateway
+      dockerfile: Dockerfile
+    container_name: ai-gateway
+    deploy:
+      resources:
+        limits:
+          memory: 32G
+        reservations:
+          memory: 16G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8000:8000"
+    networks:
+      - claw-net
+    volumes:
+      - ./ai-gateway:/opt/ai-gateway:rw
+      - ./llama.cpp:/opt/llama.cpp:ro
+      - ./models:/opt/models:ro  # External model storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give the model some time to load
+    # For command part, refer & edit your own version
+    command: >
+      /bin/bash -c "
+      echo '/opt/llama.cpp/build/bin' > /etc/ld.so.conf.d/llama.conf && ldconfig &&
+      mkdir -p /opt/ai-gateway/logs &&
+      /opt/llama.cpp/build/bin/llama-server --model /opt/models/Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf --alias 'qwen-local' --ctx-size 65536 --threads 20 --n-gpu-layers 99 --host 0.0.0.0 --port 8001 --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0 > /opt/ai-gateway/logs/llama-server.log 2>&1 &
+      until curl -sf http://127.0.0.1:8001/health; do echo 'Waiting for Qwen...'; sleep 5; done;
+      python3 /opt/ai-gateway/proxy/llama-proxy.py"
+
+  # Logic Layer：OpenClaw & Orchestrator (CPU-optimized, no GPU)
+  ai-agent:
+    build:
+      context: ./ai-agent
+      dockerfile: Dockerfile
+    container_name: ai-agent
+    depends_on:
+      ai-gateway:
+        condition: service_healthy
+    ports:
+      - "18789:18789"
+      - "8080:8080"
+      - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Cap at 8GB for agent services
+        reservations:
+          memory: 4G
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - claw-net
+    environment:
+      - NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
+      - OPENCLAW_NO_RESPAWN=1
+      - OPENCLAW_GATEWAY_TOKEN=YOUR_OPENCLAW_GATEWAY_TOKEN # Add you token
+      - OPENCLAW_OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OPENCLAW_OLLAMA_MODEL=nomic-embed-text:latest
+      - TZ=Canada/Eastern
+    volumes:
+      - ./persist/workspace:/root/.openclaw/workspace # Edit ./persist/workspace as your path
+      - ./persist/memory:/root/.openclaw/memory # Edit ./persist/memory as your path
+      - ./persist/config:/root/.openclaw          # Edit ./persist/config as your path
+      - ./ai-agent/ai-agent-logs:/var/log/openclaw:rw
+      - /etc/localtime:/etc/localtime:ro   # Time Zone
+      - /etc/timezone:/etc/timezone:ro
+    # Add a host mapping to ensure `host.docker.internal` in YAML file is accessible
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - /bin/bash
+      - -c
+      - |
+        service redis-server start
+        export HOST=0.0.0.0
+        openclaw gateway --port 18789 --allow-unconfigured 2>&1 | tee /var/log/openclaw/gateway.log
+
+networks:
+  claw-net:
+    driver: bridge
+
+volumes:
+  models:
+  ai-agent-logs:
