@@ -79,13 +79,15 @@ docker cp your_folder_name:/root/.openclaw/memory    /home/your_file_path/
 free at: https://aistudio.google.com/apikey
 > Free tier: 100 RPD, 5 RPM for Gemini 2.5 Flash
 
+```bash
 | `:ro` on llama.cpp and qwen_claude | Read-only, agent cannot modify model files |
 | `-e GEMINI_API_KEY` | Enables Gemini routing in proxy |
 | workspace + memory mounts | Survive container rebuild |
+```
 
 ---
 
-## Make sure the file structure the same as this REPO
+### Make sure the file structure the same as this REPO
 
 ---
 
@@ -101,6 +103,8 @@ This system employs a hybrid deployment strategy, balancing isolation and perfor
 
 ## 🚀 Common Use Command Prompt
 
+```bash
+
 docker compose build
 
 docker compose down
@@ -111,6 +115,7 @@ docker start ai-agent
 docker restart ai-agent
 
 docker exec -it ai-agent /bin/bash
+```
 
 ---
 
@@ -156,11 +161,11 @@ Environment="OLLAMA_HOST=0.0.0.0"
 
 2. Restart the service:
 
-Bash
-
+```bash
 sudo systemctl daemon-reload
 
 sudo systemctl restart ollama
+```
 
 ---
 
@@ -170,21 +175,23 @@ Install QMD on the host machine to leverage the powerful computing capabilities 
 
 1. Installation and Configuration:
 
-Bash
+```bash
 npm install -g @tobilu/qmd
-
 qmd collection add /path/to/your/vault --name vault
+```
 
 2. Indexing (using GPU acceleration):
 
-Bash
+```bash
 QMD_EMBEDDING_MODEL=nomic-embed-text qmd embed
-
+```
 3. Fast Terminal Search:
 
+```bash
 ◦ qmd query "question": Deep search using Reranker.
 
 ◦ qmd vsearch "sentence": Pure vector similarity search.
+```
 
 ---
 
@@ -258,11 +265,13 @@ put that file in ~/.openclaw
 
 ## Every Session Startup
 
-docker compose down   (when you change docker-compose.yml, DockerFile, llama-proxy.py...etc, do it first)
+```bash
+docker compose down    - Do it first when you update docker-compose.yml, DockerFile, llama-proxy.py...etc
 docker compose up -d
-docker start ai-agent   (Launch the system)
-docker compose logs -f ai-agent  (Check it's working with no error)
-docker exec -it ai-agent /bin/bash  (Enter into root)
+docker start ai-agent  - Launch the system
+docker compose logs -f ai-agent  - Check it's working with no error
+docker exec -it ai-agent /bin/bash   - Enter the root
+```
 
 ---
 
