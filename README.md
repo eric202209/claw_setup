@@ -79,9 +79,13 @@ docker cp your_folder_name:/root/.openclaw/memory    /home/your_file_path/
 free at: https://aistudio.google.com/apikey
 > Free tier: 100 RPD, 5 RPM for Gemini 2.5 Flash
 
-```bash
-| `:ro` on llama.cpp and qwen_claude | Read-only, agent cannot modify model files |
-| `-e GEMINI_API_KEY` | Enables Gemini routing in proxy |
+```
+| `:ro` 
+| on llama.cpp and qwen_claude |
+| Read-only, agent cannot modify model files |
+
+| `-e GEMINI_API_KEY` 
+| Enables Gemini routing in proxy |
 | workspace + memory mounts | Survive container rebuild |
 ```
 
@@ -96,6 +100,7 @@ For first setup, you could change your own way.
 
 ### Make sure the file structure the same as this REPO
 
+```
 claw_setup(rename as you want)/
 ├── ai-agent/           
 │   ├── ai-agent-logs/
@@ -115,6 +120,7 @@ claw_setup(rename as you want)/
 │   ├── workspace/
 │   ├── (Add subfolder name into docker-compose.yml - ai-agent - volumes)             
 └── docker-compose.yml
+```
 
 ---
 
