@@ -87,9 +87,37 @@ free at: https://aistudio.google.com/apikey
 
 ---
 
-### Make sure the file structure the same as this REPO
+There is a Dockerfile in ai-agateway folder to avoid alarm in docker compose build.
+Use this as sample file when you move your data from previous image.
+
+For first setup, you could change your own way.
 
 ---
+
+### Make sure the file structure the same as this REPO
+
+claw_setup(rename as you want)/
+├── ai-agent/           
+│   ├── ai-agent-logs/
+│   │   ├── gateway.log
+├────── Dockerfile 
+├── ai-gateway/     
+│   ├── logs/
+│   │   ├── llama-server.log
+│   ├── proxy/
+│   │   ├── config.yaml
+│   │   ├── llama-proxy.py
+├────── Dockerfile
+├── llama.cpp/  
+├── models/ Download the model & save to this folder 
+├── previous_folder/
+│   ├── memory/
+│   ├── workspace/
+│   ├── (Add subfolder name into docker-compose.yml - ai-agent - volumes)             
+└── docker-compose.yml
+
+---
+
 
 ## 🏗️ System Architecture Overview
 
@@ -163,7 +191,6 @@ Environment="OLLAMA_HOST=0.0.0.0"
 
 ```bash
 sudo systemctl daemon-reload
-
 sudo systemctl restart ollama
 ```
 
@@ -188,18 +215,21 @@ QMD_EMBEDDING_MODEL=nomic-embed-text qmd embed
 3. Fast Terminal Search:
 
 ```bash
-◦ qmd query "question": Deep search using Reranker.
-
-◦ qmd vsearch "sentence": Pure vector similarity search.
+qmd query "question": Deep search using Reranker.
+qmd vsearch "sentence": Pure vector similarity search.
 ```
 
 ---
 
-After ai-agent / ai-gateway container was built,
+After ai-agent / ai-gateway container build complete,
 
+```bash
 docker exec -it ai-agent /bin/bash
+```
 
 ## Install Tools Inside Container
+
+You could install part of them as you want
 
 ```bash
 apt-get update && apt-get install -y \
@@ -253,7 +283,7 @@ openssl rand -hex 32
 # Save this output — used everywhere as YOUR_TOKEN
 ```
 
-You can follow OpenClaw official install guide to get your Gateway Token 
+Or follow OpenClaw official install guide to get Gateway Token 
 
 ---
 
@@ -266,11 +296,11 @@ put that file in ~/.openclaw
 ## Every Session Startup
 
 ```bash
-docker compose down    - Do it first when you update docker-compose.yml, DockerFile, llama-proxy.py...etc
+docker compose down    | Turn off when you update docker-compose.yml, llama-proxy.py...etc
 docker compose up -d
-docker start ai-agent  - Launch the system
-docker compose logs -f ai-agent  - Check it's working with no error
-docker exec -it ai-agent /bin/bash   - Enter the root
+docker start ai-agent  | Launch the system
+docker compose logs -f ai-agent  | Check it works with no error
+docker exec -it ai-agent /bin/bash   | Enter the root
 ```
 
 ---
