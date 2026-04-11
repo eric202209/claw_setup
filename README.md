@@ -94,7 +94,7 @@ free at: https://aistudio.google.com/apikey
 There is a Dockerfile in ai-agateway folder to avoid alarm in docker compose build.
 Use this as sample file when you move your data from previous image.
 
-For first setup, you could change your own way.
+For the first setup, edit your own one.
 
 ---
 
@@ -161,7 +161,7 @@ Key snippets of docker-compose.yml
 
 services:
 ai-agent:
-image: your_name:latest
+image: your_image_name:latest
 container_name: ai-agent
 
 environment:
@@ -171,8 +171,8 @@ extra_hosts:
 - "host.docker.internal:host-gateway" # Key: Allows containers to access the host machine
 
 volumes:
-- ./your/file/path/workspace:/root/.openclaw/workspace
-- ./your/file/path/memory:/root/.openclaw/memory
+- ./your/file/path/workspace:/root/.openclaw/workspace # which includes AGENTS.md, SOUL.md, projects/, memory/ ...etc
+- ./your/file/path/memory:/root/.openclaw/memory # sqlite
 - ./your/file/path/config/openclaw.json:/root/.openclaw/openclaw.json
 - ./your/file/path/redis:/var/lib/redis # Redis persistence
 
@@ -233,21 +233,12 @@ After ai-agent / ai-gateway container build complete,
 docker exec -it ai-agent /bin/bash
 ```
 
-## Install Tools Inside Container
-
-You could install part of them as you want
+## Install Tools Inside Container (Option)
 
 ```bash
 apt-get update && apt-get install -y \
   curl wget git python3 python3-pip \
   build-essential openssh-client
-
-# Node.js 22
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt-get install -y nodejs
-
-# pnpm
-npm install -g pnpm
 
 # GitHub CLI
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -258,12 +249,12 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
 apt-get update && apt-get install -y gh
 
 # Verify
-git --version && gh --version && pnpm --version && node --version
+git --version && gh --version
 ```
 
 ---
 
-## Setup GitHub Agent Account
+## Setup GitHub Agent Account (Option)
 
 ```bash
 git config --global user.name "your_user_name"
@@ -302,11 +293,11 @@ put that file in ~/.openclaw
 ## Every Session Startup
 
 ```bash
-docker compose down    | Turn off when you update docker-compose.yml, llama-proxy.py...etc
+docker compose down    | Command this first when you update docker-compose.yml, llama-proxy.py...etc
 docker compose up -d
 docker start ai-agent  | Launch the system
-docker compose logs -f ai-agent  | Check it works with no error
-docker exec -it ai-agent /bin/bash   | Enter the root
+docker compose logs -f ai-agent  | Check the logs
+docker exec -it ai-agent /bin/bash   | Into container
 ```
 
 ---
@@ -352,7 +343,7 @@ During the setup process, we successfully resolved the following core issues:
 
 3. Recommended final state:
 
-- Suggest you use openclaw@2026.3.11 or @2026.3.13, more stable version
+- Suggest you use openclaw@2026.3.11, @2026.3.13, or @2026.4.10, search for stable version
 
 - Node 22 LTS
 

@@ -9,9 +9,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 32G
+          memory: 32G   # 16G for small model
         reservations:
-          memory: 16G
+          memory: 16G   # 8G for small model
           devices:
             - driver: nvidia
               count: 1
@@ -39,7 +39,7 @@ services:
       until curl -sf http://127.0.0.1:8001/health; do echo 'Waiting for Qwen...'; sleep 5; done;
       python3 /opt/ai-gateway/proxy/llama-proxy.py"
 
-  # Logic Layer：OpenClaw & Orchestrator (CPU-optimized, no GPU)
+  # Logic Layer：OpenClaw & Orchestrator
   ai-agent:
     build:
       context: ./ai-agent
@@ -49,7 +49,7 @@ services:
       ai-gateway:
         condition: service_healthy
     ports:
-      - "18789:18789"
+      - "18789:18789" # Add your port here
       - "8080:8080"
       - "3000:3000"
     deploy:
@@ -67,10 +67,10 @@ services:
     environment:
       - NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
       - OPENCLAW_NO_RESPAWN=1
-      - OPENCLAW_GATEWAY_TOKEN=YOUR_OPENCLAW_GATEWAY_TOKEN # Add you token
+      - OPENCLAW_GATEWAY_TOKEN=YOUR_OPENCLAW_GATEWAY_TOKEN     # Add you token
       - OPENCLAW_OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OPENCLAW_OLLAMA_MODEL=nomic-embed-text:latest
-      - TZ=Canada/Eastern
+      - TZ=Canada/Eastern     #Change your time zone
     volumes:
       - ./persist/workspace:/root/.openclaw/workspace # Edit ./persist/workspace as your path
       - ./persist/memory:/root/.openclaw/memory # Edit ./persist/memory as your path

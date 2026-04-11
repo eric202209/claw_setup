@@ -12,6 +12,8 @@ WHAT THIS VERSION DOES:
   - Routes [autoresearch] to the ReAct loop
   - Routes [think] to enable Qwen thinking mode
   - Handles /upload, /stop, /health, /session-reset endpoints
+  - (e.g. curl http://127.0.0.1:8000/health, curl -X POST http://127.0.0.1:8000/stop)
+  - (mobile phone via SSH, use host machine LAN IP, e.g. curl http://192.xxx.x.x:8000/health)
   - Exponential backoff retry on internal backend calls only
   - Context trim ONLY as a last resort (very conservative budget)
   - Semaphore concurrency limit
@@ -70,7 +72,7 @@ AUTORESEARCH_KEYWORD = "[autoresearch]"
 CONTEXT_BUDGET_CHARS = int(os.environ.get("CONTEXT_BUDGET_CHARS", "200000"))
 
 # Timeouts
-STREAM_TIMEOUT_SEC  = int(os.environ.get("STREAM_TIMEOUT_SEC",  "120"))
+STREAM_TIMEOUT_SEC  = int(os.environ.get("STREAM_TIMEOUT_SEC",  "240"))
 REQUEST_TIMEOUT_SEC = int(os.environ.get("REQUEST_TIMEOUT_SEC", "60"))
 
 # Retry for internal calls (autoresearch / summarize) only.
@@ -99,14 +101,14 @@ _active_requests_lock        = threading.Lock()
 
 GEMINI_KEYWORD = "[gemini]"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")     # change as you want
 GEMINI_URL     = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
 )
 
 UPLOAD_DIR = os.environ.get(
-    "UPLOAD_DIR", "/root/.openclaw/workspace/vault/downloads"
+    "UPLOAD_DIR", "/root/.openclaw/workspace/vault/downloads"           # update file path
 )
 
 logging.basicConfig(
@@ -719,141 +721,6 @@ def handle_health(handler):
     handler.wfile.write(data)
 
 # ─────────────────────────────────────────────
-# In-chat proxy command system
-# ─────────────────────────────────────────────
-# Type these in the OpenClaw chat box — no laptop needed.
-#
-#   /proxy-help          list all commands
-#   /proxy-health        RAM, slots, active streams
-#   /proxy-stop          abort all active streaming requests
-#   /proxy-stop-all      same as above
-#
-# Commands are intercepted BEFORE the message reaches llama.cpp,
-# so they work even when the model is busy or mid-generation.
-# ─────────────────────────────────────────────
-
-PROXY_CMD_PREFIX = "/proxy-"
-
-
-def _get_last_user_text(messages: list) -> str:
-    """Return the text content of the last user message, or ''."""
-    for msg in reversed(messages):
-        if not isinstance(msg, dict) or msg.get("role") != "user":
-            continue
-        content = msg.get("content", "")
-        if isinstance(content, str):
-            return content.strip()
-        if isinstance(content, list):
-            for part in reversed(content):
-                if isinstance(part, dict) and part.get("type") == "text":
-                    return part.get("text", "").strip()
-    return ""
-
-
-def _proxy_cmd_response(text: str, parsed: dict) -> dict:
-    """Wrap a proxy command reply as a chat.completion (streaming or not)."""
-    model      = parsed.get("model", "llama-proxy")
-    is_stream  = parsed.get("stream", False)
-    if is_stream:
-        chunk = {
-            "id": "proxy-cmd", "object": "chat.completion.chunk", "model": model,
-            "choices": [{"index": 0, "delta": {"role": "assistant", "content": text}, "finish_reason": None}],
-        }
-        done = {
-            "id": "proxy-cmd", "object": "chat.completion.chunk", "model": model,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-        }
-        return {"_stream": True, "sse": f"data: {json.dumps(chunk)}\n\ndata: {json.dumps(done)}\n\ndata: [DONE]\n\n"}
-    return {
-        "_stream": False,
-        "completion": {
-            "id": "proxy-cmd", "object": "chat.completion", "model": model,
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-        }
-    }
-
-
-def _run_proxy_command(cmd: str) -> str:
-    """Execute a /proxy-* command and return the reply text."""
-    cmd = cmd.lower().strip()
-
-    # ── /proxy-help ───────────────────────────────────────────────────────
-    if cmd in ("help", ""):
-        return (
-            "**Proxy commands** (type in chat, no laptop needed)\n\n"
-            "| Command | Action |\n"
-            "|---|---|\n"
-            "| `/proxy-help` | Show this list |\n"
-            "| `/proxy-health` | RAM usage, slots, active streams |\n"
-            "| `/proxy-stop` | Abort all active streaming requests |\n"
-            "| `/proxy-stop-all` | Same as above |\n"
-        )
-
-    # ── /proxy-health ─────────────────────────────────────────────────────
-    if cmd == "health":
-        try:
-            slots_free = _semaphore._value
-        except Exception:
-            slots_free = -1
-        with _active_requests_lock:
-            streams = len(_active_requests)
-
-        ram_used = ram_free = ram_total = -1.0
-        try:
-            meminfo = {}
-            with open("/proc/meminfo") as f:
-                for line in f:
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        meminfo[parts[0].rstrip(":")] = int(parts[1])
-            total = meminfo.get("MemTotal", 0)
-            avail = meminfo.get("MemAvailable", 0)
-            ram_total = round(total / 1_048_576, 1)
-            ram_free  = round(avail / 1_048_576, 1)
-            ram_used  = round((total - avail) / 1_048_576, 1)
-        except Exception:
-            pass
-
-        return (
-            f"**Proxy health**\n\n"
-            f"- RAM: **{ram_used} GB** used / {ram_free} GB free / {ram_total} GB total\n"
-            f"- Concurrency slots: **{slots_free}/{PROXY_MAX_CONCURRENT}** free\n"
-            f"- Active streams: **{streams}**\n"
-            f"- Backend: `{BACKEND_URL}`\n"
-            f"- Stream timeout: {STREAM_TIMEOUT_SEC}s\n"
-        )
-
-    # ── /proxy-stop / /proxy-stop-all ─────────────────────────────────────
-    if cmd in ("stop", "stop-all"):
-        stopped = []
-        with _active_requests_lock:
-            for rid, obj in list(_active_requests.items()):
-                try:
-                    obj.close()
-                except Exception:
-                    pass
-                stopped.append(rid)
-            _active_requests.clear()
-        log.info("/proxy-stop: aborted %d active request(s) via chat command", len(stopped))
-        if stopped:
-            return f"⛔ Stopped **{len(stopped)}** active stream(s)."
-        return "ℹ️ No active streams to stop."
-
-    return f"❓ Unknown proxy command: `/proxy-{cmd}`\nType `/proxy-help` for the list."
-
-
-def check_proxy_command(messages: list) -> str | None:
-    """
-    If the last user message starts with /proxy-, return the command name.
-    Otherwise return None.
-    """
-    text = _get_last_user_text(messages)
-    if text.lower().startswith(PROXY_CMD_PREFIX):
-        return text[len(PROXY_CMD_PREFIX):].split()[0]   # first word after /proxy-
-    return None
-
-# ─────────────────────────────────────────────
 # HTTP Proxy Handler
 # ─────────────────────────────────────────────
 
@@ -919,25 +786,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
                 parsed = json.loads(body)
             except Exception:
                 pass
-
-        # ── Proxy in-chat commands (/proxy-*) ────────────────────────────
-        # Intercepted before reaching llama.cpp — works even mid-generation.
-        if parsed and "messages" in parsed and method == "POST":
-            proxy_cmd = check_proxy_command(parsed["messages"])
-            if proxy_cmd is not None:
-                log.info("Proxy command intercepted: /proxy-%s", proxy_cmd)
-                reply_text = _run_proxy_command(proxy_cmd)
-                resp       = _proxy_cmd_response(reply_text, parsed)
-                if resp["_stream"]:
-                    sse_bytes = resp["sse"].encode()
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/event-stream")
-                    self.send_header("Content-Length", str(len(sse_bytes)))
-                    self.end_headers()
-                    self.wfile.write(sse_bytes)
-                else:
-                    self._send_json(200, resp["completion"])
-                return
 
         # ── Gemini routing ────────────────────────────────────────────────
         if (parsed and "messages" in parsed and GEMINI_API_KEY and method == "POST"

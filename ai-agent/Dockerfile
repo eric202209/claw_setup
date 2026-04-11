@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
-    npm install -g pnpm openclaw@2026.3.11
+    npm install -g pnpm openclaw@2026.4.10
 
 WORKDIR /root
 

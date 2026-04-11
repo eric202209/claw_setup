@@ -52,17 +52,13 @@
         "maxConcurrent": 8
       },
       "workspace": "/root/.openclaw/workspace",
-      "contextPruning": {
-        "mode": "cache-ttl",
-        "ttl": "5m"
-      },
       "timeoutSeconds": 600,
       "memorySearch": {
         "enabled": true,
         "provider": "ollama",
         "model": "nomic-embed-text:latest",
         "remote": {
-          "baseUrl": "http://172.17.0.1:11434"
+          "baseUrl": "http://host.docker.internal:11434"
         },
         "query": {
           "hybrid": {
@@ -137,13 +133,6 @@
     "lastRunVersion": "2026.4.4",
     "lastRunCommand": "configure",
     "lastRunMode": "local"
-  },
-  "plugins": {
-    "entries": {
-      "openai": {
-        "enabled": true
-      }
-    }
   }
 }
 
